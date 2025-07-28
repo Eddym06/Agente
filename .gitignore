@@ -105,3 +105,8 @@ Thumbs.db
 config_local.yaml
 .api_keys
 secrets.json
+
+# Test files
+test_*.py
+*_test.py
+config_test_*.yaml

@@ -123,7 +123,7 @@ class AgentCore:
             self.lm_studio_url = llm_config.get('lm_studio', {}).get('base_url', 'http://localhost:1234/v1')
             self.logger.info(f"LM Studio configured: {self.lm_studio_url}")
     
-    def is_config_valid(self) -> tuple[bool, list[str]]:
+    def is_config_valid(self) -> tuple:
         """
         Valida si la configuración actual tiene todos los valores esenciales.
         

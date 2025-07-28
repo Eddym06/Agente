@@ -70,23 +70,45 @@ source agent_env/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Configurar la aplicación
-Edita el archivo `config.yaml` según tus necesidades:
-
-```yaml
-# Configuración de LLM
-llm:
-  provider: "lm_studio"  # o "openai"
-  openai:
-    api_key: "tu-api-key-aquí"  # Solo si usas OpenAI
+### 4. Ejecutar la aplicación
+```bash
+python main.py
 ```
 
+**¡Listo!** En el primer arranque, la aplicación detectará automáticamente que falta configuración y mostrará un **asistente de configuración** que te guiará paso a paso para:
+
+- Seleccionar tu proveedor LLM preferido (OpenAI o LM Studio)
+- Introducir los datos necesarios (API key, modelos, URLs)
+- Guardar la configuración automáticamente
+
+**No necesitas editar archivos manualmente.** Todo se configura desde la interfaz gráfica.
+
+## 🐳 Compatibilidad con Docker
+
+El agente mantiene total compatibilidad con Docker y entornos virtuales. El asistente de configuración se adapta automáticamente al entorno de ejecución.
+
 ## 🎯 Uso
+
+### Configuración Inicial
+
+La primera vez que ejecutes la aplicación, aparecerá automáticamente un **Asistente de Configuración** que te guiará para:
+
+1. **Seleccionar el proveedor LLM:**
+   - **OpenAI**: Para usar GPT-3.5, GPT-4, etc.
+   - **LM Studio**: Para usar modelos locales
+
+2. **Configurar los parámetros:**
+   - **OpenAI**: Introducir API key y seleccionar modelo
+   - **LM Studio**: Configurar URL del servidor y nombre del modelo
+
+3. **Guardar la configuración** automáticamente en `config.yaml`
 
 ### Iniciar la aplicación
 ```bash
 python main.py
 ```
+
+Si necesitas cambiar la configuración posteriormente, ve a la interfaz y accede al menú de configuración.
 
 ### Interfaz Principal
 
@@ -173,19 +195,18 @@ ui:
 1. **Instalar LM Studio** desde [lmstudio.ai](https://lmstudio.ai)
 2. **Descargar un modelo** (recomendado: Llama 2 7B o similar)
 3. **Iniciar el servidor local** en el puerto 1234
-4. **Configurar** `config.yaml` con la URL correcta
+4. **Ejecutar el agente**: El asistente de configuración te guiará para configurar la conexión automáticamente
 
 ### Integración con OpenAI
 
 1. **Obtener API Key** desde [platform.openai.com](https://platform.openai.com)
-2. **Configurar** en `config.yaml`:
-   ```yaml
-   llm:
-     provider: "openai"
-     openai:
-       api_key: "tu-api-key-aquí"
-       model: "gpt-3.5-turbo"
-   ```
+2. **Ejecutar el agente**: El asistente de configuración te pedirá la API key y te permitirá seleccionar el modelo
+
+### Reconfiguración
+
+Si necesitas cambiar la configuración posteriormente:
+- Desde la interfaz: Menú → Configuración
+- Manual: Edita `config.yaml` directamente (opcional)
 
 ## 📁 Estructura del Proyecto
 
