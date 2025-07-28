@@ -15,7 +15,8 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QGridLayout, QPushButton, QLabel, QTextEdit, QLineEdit, QScrollArea,
     QFrame, QSplitter, QProgressBar, QMessageBox, QFileDialog,
-    QGroupBox, QTabWidget, QComboBox, QSpinBox, QCheckBox
+    QGroupBox, QTabWidget, QComboBox, QSpinBox, QCheckBox, QWizard, 
+    QWizardPage, QRadioButton, QButtonGroup
 )
 from PyQt6.QtCore import (
     Qt, QThread, pyqtSignal, QTimer, QSize, QPropertyAnimation, 
@@ -180,6 +181,293 @@ class ModernButton(QPushButton):
         self.setMinimumHeight(40 if self.primary else 35)
 
 
+class ConfigurationWizard(QWizard):
+    """
+    Asistente de configuración inicial para el agente.
+    Guía al usuario para configurar el proveedor LLM y sus parámetros.
+    """
+    
+    def __init__(self, config_data: Dict[str, Any] = None):
+        super().__init__()
+        self.config_data = config_data or {}
+        self.setup_wizard()
+        
+    def setup_wizard(self):
+        """Configurar el asistente de configuración."""
+        self.setWindowTitle("Configuración Inicial - Agente Personalizado")
+        self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
+        self.setFixedSize(600, 500)
+        
+        # Páginas del asistente
+        self.addPage(WelcomePage())
+        self.addPage(ProviderSelectionPage())
+        self.addPage(OpenAIConfigPage())
+        self.addPage(LMStudioConfigPage())
+        self.addPage(SummaryPage())
+        
+        # Estilos
+        self.setStyleSheet("""
+            QWizard {
+                background-color: #1A202C;
+                color: #F7FAFC;
+            }
+            QWizardPage {
+                background-color: #1A202C;
+                color: #F7FAFC;
+            }
+            QLabel {
+                color: #F7FAFC;
+            }
+            QLineEdit {
+                background-color: #2D3748;
+                border: 2px solid #4A5568;
+                border-radius: 4px;
+                padding: 8px;
+                color: #F7FAFC;
+            }
+            QLineEdit:focus {
+                border-color: #3182CE;
+            }
+            QRadioButton {
+                color: #F7FAFC;
+                spacing: 8px;
+            }
+            QRadioButton::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QRadioButton::indicator:unchecked {
+                background-color: #2D3748;
+                border: 2px solid #4A5568;
+                border-radius: 8px;
+            }
+            QRadioButton::indicator:checked {
+                background-color: #3182CE;
+                border: 2px solid #3182CE;
+                border-radius: 8px;
+            }
+        """)
+
+
+class WelcomePage(QWizardPage):
+    """Página de bienvenida del asistente."""
+    
+    def __init__(self):
+        super().__init__()
+        self.setTitle("¡Bienvenido al Agente Personalizado!")
+        self.setSubTitle("Este asistente te ayudará a configurar tu agente por primera vez.")
+        
+        layout = QVBoxLayout()
+        
+        welcome_text = QLabel(
+            "Para comenzar a usar el agente, necesitas configurar un proveedor de "
+            "modelo de lenguaje (LLM). Puedes elegir entre:\n\n"
+            "• OpenAI: Usa modelos como GPT-3.5 o GPT-4 (requiere API key)\n"
+            "• LM Studio: Usa modelos locales ejecutados en tu equipo\n\n"
+            "El asistente te guiará paso a paso para configurar tu opción preferida."
+        )
+        welcome_text.setWordWrap(True)
+        welcome_text.setStyleSheet("font-size: 14px; line-height: 1.6;")
+        
+        layout.addWidget(welcome_text)
+        layout.addStretch()
+        
+        self.setLayout(layout)
+
+
+class ProviderSelectionPage(QWizardPage):
+    """Página para seleccionar el proveedor LLM."""
+    
+    def __init__(self):
+        super().__init__()
+        self.setTitle("Selecciona tu Proveedor LLM")
+        self.setSubTitle("Elige cómo quieres usar el modelo de lenguaje.")
+        
+        layout = QVBoxLayout()
+        
+        # Grupo de botones radio
+        self.provider_group = QButtonGroup()
+        
+        # Opción OpenAI
+        self.openai_radio = QRadioButton("OpenAI (GPT-3.5, GPT-4)")
+        self.openai_radio.setChecked(True)
+        openai_desc = QLabel("• Modelos de alta calidad\n• Requiere conexión a internet\n• Requiere API key de OpenAI")
+        openai_desc.setStyleSheet("margin-left: 25px; color: #A0AEC0; font-size: 12px;")
+        
+        # Opción LM Studio
+        self.lmstudio_radio = QRadioButton("LM Studio (Modelos Locales)")  
+        lmstudio_desc = QLabel("• Modelos ejecutados localmente\n• No requiere internet una vez descargado\n• Requiere LM Studio instalado")
+        lmstudio_desc.setStyleSheet("margin-left: 25px; color: #A0AEC0; font-size: 12px;")
+        
+        self.provider_group.addButton(self.openai_radio, 0)
+        self.provider_group.addButton(self.lmstudio_radio, 1)
+        
+        layout.addWidget(self.openai_radio)
+        layout.addWidget(openai_desc)
+        layout.addSpacing(20)
+        layout.addWidget(self.lmstudio_radio)
+        layout.addWidget(lmstudio_desc)
+        layout.addStretch()
+        
+        self.setLayout(layout)
+        
+        # Registrar el campo para que el wizard pueda acceder a él
+        self.registerField("provider", self.openai_radio)
+    
+    def nextId(self):
+        """Determina qué página mostrar siguiente."""
+        if self.openai_radio.isChecked():
+            return 2  # OpenAIConfigPage
+        else:
+            return 3  # LMStudioConfigPage
+
+
+class OpenAIConfigPage(QWizardPage):
+    """Página de configuración para OpenAI."""
+    
+    def __init__(self):
+        super().__init__()
+        self.setTitle("Configuración de OpenAI")
+        self.setSubTitle("Ingresa tu API key y selecciona el modelo.")
+        
+        layout = QVBoxLayout()
+        
+        # API Key
+        api_key_label = QLabel("API Key de OpenAI:")
+        api_key_label.setStyleSheet("font-weight: bold;")
+        self.api_key_input = QLineEdit()
+        self.api_key_input.setPlaceholderText("sk-...")
+        self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        
+        api_key_help = QLabel("Obtén tu API key en: https://platform.openai.com/api-keys")
+        api_key_help.setStyleSheet("color: #A0AEC0; font-size: 11px;")
+        
+        # Modelo
+        model_label = QLabel("Modelo:")
+        model_label.setStyleSheet("font-weight: bold;")
+        self.model_input = QLineEdit()
+        self.model_input.setText("gpt-3.5-turbo")
+        self.model_input.setPlaceholderText("gpt-3.5-turbo")
+        
+        model_help = QLabel("Ejemplos: gpt-3.5-turbo, gpt-4, gpt-4-turbo")
+        model_help.setStyleSheet("color: #A0AEC0; font-size: 11px;")
+        
+        layout.addWidget(api_key_label)
+        layout.addWidget(self.api_key_input)
+        layout.addWidget(api_key_help)
+        layout.addSpacing(20)
+        layout.addWidget(model_label)
+        layout.addWidget(self.model_input)
+        layout.addWidget(model_help)
+        layout.addStretch()
+        
+        self.setLayout(layout)
+        
+        # Registrar campos
+        self.registerField("openai_api_key*", self.api_key_input)
+        self.registerField("openai_model*", self.model_input)
+    
+    def nextId(self):
+        """Saltar la página de LM Studio."""
+        return 4  # SummaryPage
+
+
+class LMStudioConfigPage(QWizardPage):
+    """Página de configuración para LM Studio."""
+    
+    def __init__(self):
+        super().__init__()
+        self.setTitle("Configuración de LM Studio")
+        self.setSubTitle("Configura la conexión con tu servidor local de LM Studio.")
+        
+        layout = QVBoxLayout()
+        
+        # URL base
+        url_label = QLabel("URL del Servidor:")
+        url_label.setStyleSheet("font-weight: bold;")
+        self.url_input = QLineEdit()
+        self.url_input.setText("http://localhost:1234/v1")
+        self.url_input.setPlaceholderText("http://localhost:1234/v1")
+        
+        url_help = QLabel("Asegúrate de que LM Studio esté ejecutándose en servidor local")
+        url_help.setStyleSheet("color: #A0AEC0; font-size: 11px;")
+        
+        # Modelo
+        model_label = QLabel("Nombre del Modelo:")
+        model_label.setStyleSheet("font-weight: bold;")
+        self.model_input = QLineEdit()
+        self.model_input.setText("local-model")
+        self.model_input.setPlaceholderText("local-model")
+        
+        model_help = QLabel("El nombre puede ser genérico como 'local-model'")
+        model_help.setStyleSheet("color: #A0AEC0; font-size: 11px;")
+        
+        layout.addWidget(url_label)
+        layout.addWidget(self.url_input)
+        layout.addWidget(url_help)
+        layout.addSpacing(20)
+        layout.addWidget(model_label)
+        layout.addWidget(self.model_input)
+        layout.addWidget(model_help)
+        layout.addStretch()
+        
+        self.setLayout(layout)
+        
+        # Registrar campos
+        self.registerField("lmstudio_url*", self.url_input)
+        self.registerField("lmstudio_model*", self.model_input)
+
+
+class SummaryPage(QWizardPage):
+    """Página de resumen de la configuración."""
+    
+    def __init__(self):
+        super().__init__()
+        self.setTitle("Resumen de Configuración")
+        self.setSubTitle("Revisa tu configuración antes de guardar.")
+        
+        layout = QVBoxLayout()
+        
+        self.summary_label = QLabel()
+        self.summary_label.setWordWrap(True)
+        self.summary_label.setStyleSheet("font-size: 14px; background-color: #2D3748; padding: 15px; border-radius: 8px;")
+        
+        layout.addWidget(self.summary_label)
+        layout.addStretch()
+        
+        self.setLayout(layout)
+    
+    def initializePage(self):
+        """Actualizar el resumen cuando se muestra la página."""
+        # Obtener la página de selección de proveedor
+        provider_page = self.wizard().page(1)
+        
+        if provider_page.openai_radio.isChecked():
+            api_key = self.field("openai_api_key")
+            model = self.field("openai_model")
+            summary_text = f"""
+            <b>Proveedor:</b> OpenAI<br>
+            <b>API Key:</b> {'*' * 20 + api_key[-4:] if len(api_key) > 4 else '*' * len(api_key)}<br>
+            <b>Modelo:</b> {model}<br><br>
+            
+            Tu agente usará OpenAI para procesar consultas.
+            Asegúrate de que tu API key tenga saldo suficiente.
+            """
+        else:
+            url = self.field("lmstudio_url")
+            model = self.field("lmstudio_model")
+            summary_text = f"""
+            <b>Proveedor:</b> LM Studio<br>
+            <b>URL del Servidor:</b> {url}<br>
+            <b>Modelo:</b> {model}<br><br>
+            
+            Tu agente usará un modelo local a través de LM Studio.
+            Asegúrate de que LM Studio esté ejecutándose antes de usar el agente.
+            """
+        
+        self.summary_label.setText(summary_text)
+
+
 class AgentUI(QMainWindow):
     """
     Interfaz principal del agente personalizado.
@@ -197,6 +485,14 @@ class AgentUI(QMainWindow):
             QMessageBox.critical(None, "Error", f"Error inicializando el agente: {str(e)}")
             sys.exit(1)
         
+        # Verificar si la configuración es válida
+        config_valid, missing_items = self.agent_core.is_config_valid()
+        if not config_valid:
+            # Mostrar wizard de configuración
+            if not self.show_configuration_wizard():
+                # Usuario canceló la configuración, cerrar aplicación
+                sys.exit(0)
+        
         # Variables de control
         self.current_worker = None
         self.log_lines = []
@@ -212,6 +508,72 @@ class AgentUI(QMainWindow):
         self.add_log("=== AGENTE PERSONALIZADO INICIADO ===", "SUCCESS")
         self.add_log(f"Versión: {self.config['app']['version']}")
         self.add_log(f"Herramientas disponibles: {len(self.agent_core.get_available_tools())}")
+    
+    def show_configuration_wizard(self) -> bool:
+        """
+        Muestra el asistente de configuración y procesa los resultados.
+        
+        Returns:
+            bool: True si la configuración fue completada, False si fue cancelada
+        """
+        wizard = ConfigurationWizard(self.config)
+        
+        if wizard.exec() == QWizard.DialogCode.Accepted:
+            # Procesar la configuración
+            try:
+                new_config = self.config.copy()
+                
+                # Obtener página de selección de proveedor
+                provider_page = wizard.page(1)
+                
+                if provider_page.openai_radio.isChecked():
+                    # Configuración OpenAI
+                    api_key = wizard.field("openai_api_key")
+                    model = wizard.field("openai_model")
+                    
+                    new_config['llm'] = {
+                        'provider': 'openai',
+                        'openai': {
+                            'api_key': api_key,
+                            'model': model
+                        },
+                        'lm_studio': new_config.get('llm', {}).get('lm_studio', {
+                            'base_url': 'http://localhost:1234/v1',
+                            'model': 'local-model'
+                        })
+                    }
+                else:
+                    # Configuración LM Studio
+                    url = wizard.field("lmstudio_url")
+                    model = wizard.field("lmstudio_model")
+                    
+                    new_config['llm'] = {
+                        'provider': 'lm_studio',
+                        'lm_studio': {
+                            'base_url': url,
+                            'model': model
+                        },
+                        'openai': new_config.get('llm', {}).get('openai', {
+                            'api_key': '',
+                            'model': 'gpt-3.5-turbo'
+                        })
+                    }
+                
+                # Guardar configuración
+                self.agent_core.save_config_to_file(new_config)
+                
+                QMessageBox.information(self, "Configuración Guardada", 
+                                      "La configuración ha sido guardada exitosamente.\n"
+                                      "El agente está listo para usar.")
+                return True
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", 
+                                   f"Error guardando la configuración:\n{str(e)}")
+                return False
+        else:
+            # Usuario canceló
+            return False
     
     def setup_window(self):
         """Configura la ventana principal."""
@@ -786,9 +1148,10 @@ class AgentUI(QMainWindow):
     
     def show_configuration(self):
         """Muestra el diálogo de configuración."""
-        QMessageBox.information(self, "Configuración", 
-                              "Funcionalidad de configuración en desarrollo.\n"
-                              "Por ahora, modifica el archivo config.yaml directamente.")
+        if self.show_configuration_wizard():
+            self.add_log("Configuración actualizada exitosamente", "SUCCESS")
+        else:
+            self.add_log("Configuración cancelada por el usuario", "WARNING")
     
     def update_status(self):
         """Actualiza el estado periódicamente."""
