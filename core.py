@@ -122,6 +122,59 @@ class AgentCore:
         elif self.llm_provider == 'lm_studio':
             self.lm_studio_url = llm_config.get('lm_studio', {}).get('base_url', 'http://localhost:1234/v1')
             self.logger.info(f"LM Studio configured: {self.lm_studio_url}")
+    
+    def is_config_valid(self) -> tuple[bool, list[str]]:
+        """
+        Valida si la configuración actual tiene todos los valores esenciales.
+        
+        Returns:
+            tuple: (is_valid, missing_items)
+        """
+        missing_items = []
+        
+        # Verificar configuración de LLM
+        llm_config = self.config.get('llm', {})
+        provider = llm_config.get('provider', '')
+        
+        if not provider:
+            missing_items.append("Proveedor LLM no especificado")
+        elif provider == 'openai':
+            api_key = llm_config.get('openai', {}).get('api_key', '')
+            model = llm_config.get('openai', {}).get('model', '')
+            if not api_key or api_key.strip() == '':
+                missing_items.append("API Key de OpenAI requerida")
+            if not model:
+                missing_items.append("Modelo de OpenAI no especificado")
+        elif provider == 'lm_studio':
+            base_url = llm_config.get('lm_studio', {}).get('base_url', '')
+            model = llm_config.get('lm_studio', {}).get('model', '')
+            if not base_url:
+                missing_items.append("URL base de LM Studio requerida")
+            if not model:
+                missing_items.append("Modelo de LM Studio no especificado")
+        else:
+            missing_items.append(f"Proveedor LLM '{provider}' no soportado")
+        
+        return len(missing_items) == 0, missing_items
+    
+    def save_config_to_file(self, config_data: Dict[str, Any], config_path: str = "config.yaml"):
+        """
+        Guarda la configuración al archivo YAML.
+        
+        Args:
+            config_data: Diccionario con la configuración a guardar
+            config_path: Ruta del archivo de configuración
+        """
+        try:
+            with open(config_path, 'w', encoding='utf-8') as file:
+                yaml.dump(config_data, file, default_flow_style=False, allow_unicode=True, indent=2)
+            self.logger.info(f"Configuración guardada en {config_path}")
+            # Recargar la configuración
+            self.config = config_data
+            self._setup_llm()
+        except Exception as e:
+            self.logger.error(f"Error guardando configuración: {e}")
+            raise
 
     # === GENERACIÓN DE DOCUMENTOS ===
     
