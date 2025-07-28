@@ -1,0 +1,6 @@
+Log generado el: 28/07/2025 02:36:15
+==================================================
+
+Este es un log de prueba
+Con múltiples líneas
+Generado automáticamente
