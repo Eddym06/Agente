@@ -3,7 +3,7 @@ Core module - Lógica de negocio y herramientas del agente
 Contiene todas las funciones principales para generación de documentos,
 web scraping, integración con LLM y otras herramientas avanzadas.
 """
-
+from openai import OpenAI
 import os
 import json
 import yaml
@@ -582,3 +582,4 @@ if __name__ == "__main__":
         
     except Exception as e:
         print(f"Error: {e}")
+        
